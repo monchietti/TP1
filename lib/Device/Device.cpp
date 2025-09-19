@@ -15,7 +15,7 @@ void Device::begin(int I2C_SDA, int I2C_SCL)
     Serial.println("INICIANDO...");
     // inicializacion de la pantalla
     Wire.begin(I2C_SDA, I2C_SCL);
-    if (!_display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
+    if (!_display.begin(0x3C, true))
     {
         Serial.println(F("ERROR: No se detecta OLED (0x3C)."));
         while (true)
@@ -24,7 +24,7 @@ void Device::begin(int I2C_SDA, int I2C_SCL)
 
     _display.clearDisplay();
     _display.setTextSize(1);
-    _display.setTextColor(SSD1306_WHITE);
+    _display.setTextColor(SH110X_WHITE);
     // inicializacion del sensor
     _sensor.begin();
 
@@ -33,6 +33,7 @@ void Device::begin(int I2C_SDA, int I2C_SCL)
     pinMode(ENC_SW, INPUT_PULLUP); // botón del encoder
     randomSeed(millis());
     // Generar umbral inicial entre 40 y 60
+    //HARDCODEAR EN 100 para que titile siempre
     humedadMinimaDeseada = random(40, 61);
     Serial.println("Humedad minima deseada: " + String(humedadMinimaDeseada) + "%");
 }

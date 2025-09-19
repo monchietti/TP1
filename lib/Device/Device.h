@@ -5,8 +5,7 @@
 //para que tenga las constantes y funciones de arduino
 #include <Wire.h>
 #include <DHT.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+#include <Adafruit_SH110X.h>
 
 
 
@@ -35,7 +34,7 @@ class Device{
         bool ledState = false;
         int ledInterval = 200;
         DHT _sensor;
-        Adafruit_SSD1306 _display;
+        Adafruit_SH1106G _display;
         unsigned long lastBtnMs = 0; 
         const unsigned long DEBOUNCE_MS = 200; 
         float humedadMinimaDeseada = 0.0; 

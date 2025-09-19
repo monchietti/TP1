@@ -12,8 +12,6 @@
 
 // ---- Objetos ----
 Device device(127, 64, -1, PIN_DHT, DHT22, PIN_POT, ENC_SW, PIN_LED);
-DHT dht(PIN_DHT, DHTTYPE);
-Adafruit_SSD1306 display(128, 64, &Wire, -1);
 
 
 
