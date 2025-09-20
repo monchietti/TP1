@@ -54,7 +54,7 @@ class Device{
         bool dentroDeOpcion = false; // ¿Estamos viendo una opción o en el menú?
         unsigned long ultimoEncoder = 0;
         unsigned long ultimoBoton = 0;
-        bool invertirEncoder = false; // Cambiar si el encoder gira al revés
+        
     public:
         uint8_t screenIdx = 0; // pantalla actual
         bool ventilacionEncendida = false;

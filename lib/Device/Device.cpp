@@ -165,6 +165,7 @@ void Device::showScreenHum(){
 }
 
 
+// ========== FUNCIONES DEL MENÚ ==========
 
 void Device::actualizarMenu() {
     // Esta función va en el loop() principal
@@ -183,48 +184,38 @@ void Device::actualizarMenu() {
 }
 
 void Device::leerEncoder() {
-    int estadoActualCLK = digitalRead(PIN_CLK);
+    int estadoActual = digitalRead(PIN_CLK);
     
-    // Detectar flanco de bajada en CLK
-    if (estadoActualCLK != lastStateCLK && estadoActualCLK == LOW) {
+    // Detectar cambio en CLK
+    if (estadoActual != lastStateCLK && estadoActual == LOW) {
         if (millis() - ultimoEncoder > 50) { // Debounce
             
-            // Leer DT para determinar dirección
-            int estadoDT = digitalRead(PIN_DT);
-            
-            // Determinar dirección (con posibilidad de inversión)
-            bool esHorario = (estadoDT == HIGH);
-            if (invertirEncoder) esHorario = !esHorario;
-            
-            Serial.println("Encoder - CLK=" + String(estadoActualCLK) + " DT=" + String(estadoDT) + 
-                          " Direccion=" + (esHorario ? "HORARIO" : "ANTIHORARIO"));
-            
             if (!dentroDeOpcion) {
-                // En el menú: solo horario entra
-                if (esHorario) {
+                // En el menú: solo giro horario entra en opción
+                if (digitalRead(PIN_DT) != estadoActual) {
+                    // Giro horario: ENTRAR en la opción seleccionada
                     dentroDeOpcion = true;
                     mostrarOpcion(opcionActual);
-                    Serial.println(">>> ENTRANDO en opcion: " + String(opcionActual));
-                } else {
-                    Serial.println("Giro antihorario en menu (ignorado)");
+                    Serial.println("ENTRANDO en opcion: " + String(opcionActual));
                 }
+                // Giro antihorario en menú: no hace nada
                 
             } else {
                 // Dentro de opción: solo antihorario sale
-                if (!esHorario) {
+                if (digitalRead(PIN_DT) == estadoActual) {
+                    // Giro antihorario: SALIR al menú
                     dentroDeOpcion = false;
                     pararLedIntermitente();
                     mostrarMenuPrincipal();
-                    Serial.println("<<< VOLVIENDO al menu");
-                } else {
-                    Serial.println("Giro horario en opcion (ignorado)");
+                    Serial.println("VOLVIENDO al menu");
                 }
+                // Giro horario dentro de opción: no hace nada
             }
             
             ultimoEncoder = millis();
         }
     }
-    lastStateCLK = estadoActualCLK;
+    lastStateCLK = estadoActual;
 }
 
 void Device::leerBoton() {
