@@ -23,11 +23,6 @@ void setup() {
 }
 
 void loop() {
-  device.handleEncoderButton();
-  if(device.screenIdx == 0){
-    device.showScreenTemp();
-  } else {
-    device.showScreenHum();
-    device.actualizarLedIntermitente();
-  }
+  device.actualizarMenu();
+  delay(10);
 }

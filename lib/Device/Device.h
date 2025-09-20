@@ -22,6 +22,11 @@ class Device{
         void handleEncoderButton();
         void showScreenTemp();
         void showScreenHum();
+        void actualizarMenu();
+        void leerEncoder();
+        void leerBoton();
+        void mostrarMenuPrincipal();
+        void mostrarOpcion(int cual);
         void prenderLed();
         void apagarLed();
         void ledIntermitente(int lapso);
@@ -39,7 +44,17 @@ class Device{
         const unsigned long DEBOUNCE_MS = 200; 
         float humedadMinimaDeseada = 0.0; 
         bool btnPrev = HIGH;
-        
+        // Pines del encoder
+        int PIN_CLK = 18;
+        int PIN_DT = 5;
+        int lastStateCLK;
+        // Variables del menú
+        int opcionActual = 0;        // Qué opción está seleccionada
+        int totalOpciones = 3;       // Cuántas opciones hay
+        bool dentroDeOpcion = false; // ¿Estamos viendo una opción o en el menú?
+        unsigned long ultimoEncoder = 0;
+        unsigned long ultimoBoton = 0;
+        bool invertirEncoder = false; // Cambiar si el encoder gira al revés
     public:
         uint8_t screenIdx = 0; // pantalla actual
         bool ventilacionEncendida = false;

@@ -165,3 +165,122 @@ void Device::showScreenHum(){
 }
 
 
+
+void Device::actualizarMenu() {
+    // Esta función va en el loop() principal
+    leerEncoder();
+    leerBoton();
+    actualizarLedIntermitente();
+    
+    // Actualizar pantalla si estamos dentro de una opción
+    if (dentroDeOpcion) {
+        static unsigned long ultimaActualizacion = 0;
+        if (millis() - ultimaActualizacion > 1000) { // Cada segundo
+            mostrarOpcion(opcionActual);
+            ultimaActualizacion = millis();
+        }
+    }
+}
+
+void Device::leerEncoder() {
+    int estadoActualCLK = digitalRead(PIN_CLK);
+    
+    // Detectar flanco de bajada en CLK
+    if (estadoActualCLK != lastStateCLK && estadoActualCLK == LOW) {
+        if (millis() - ultimoEncoder > 50) { // Debounce
+            
+            // Leer DT para determinar dirección
+            int estadoDT = digitalRead(PIN_DT);
+            
+            // Determinar dirección (con posibilidad de inversión)
+            bool esHorario = (estadoDT == HIGH);
+            if (invertirEncoder) esHorario = !esHorario;
+            
+            Serial.println("Encoder - CLK=" + String(estadoActualCLK) + " DT=" + String(estadoDT) + 
+                          " Direccion=" + (esHorario ? "HORARIO" : "ANTIHORARIO"));
+            
+            if (!dentroDeOpcion) {
+                // En el menú: solo horario entra
+                if (esHorario) {
+                    dentroDeOpcion = true;
+                    mostrarOpcion(opcionActual);
+                    Serial.println(">>> ENTRANDO en opcion: " + String(opcionActual));
+                } else {
+                    Serial.println("Giro antihorario en menu (ignorado)");
+                }
+                
+            } else {
+                // Dentro de opción: solo antihorario sale
+                if (!esHorario) {
+                    dentroDeOpcion = false;
+                    pararLedIntermitente();
+                    mostrarMenuPrincipal();
+                    Serial.println("<<< VOLVIENDO al menu");
+                } else {
+                    Serial.println("Giro horario en opcion (ignorado)");
+                }
+            }
+            
+            ultimoEncoder = millis();
+        }
+    }
+    lastStateCLK = estadoActualCLK;
+}
+
+void Device::leerBoton() {
+    if (digitalRead(ENC_SW) == LOW) {
+        if (millis() - ultimoBoton > 300) { // Debounce
+            
+            if (!dentroDeOpcion) {
+                // En menú: NAVEGAR a siguiente opción
+                opcionActual = (opcionActual + 1) % totalOpciones;
+                mostrarMenuPrincipal();
+                Serial.println("NAVEGANDO a opcion: " + String(opcionActual));
+            }
+            // Si estamos dentro de opción, el botón no hace nada
+            
+            ultimoBoton = millis();
+        }
+    }
+}
+
+void Device::mostrarMenuPrincipal() {
+    String menu = "=== MENU PRINCIPAL ===\n\n";
+    
+    String opciones[] = {"Monitor", "Temperatura", "Humedad"};
+    
+    for (int i = 0; i < totalOpciones; i++) {
+        if (i == opcionActual) {
+            menu += "> " + opciones[i] + " <\n";
+        } else {
+            menu += "  " + opciones[i] + "\n";
+        }
+    }
+    
+    menu += "\nBoton: NAVEGAR\nGiro horario: ENTRAR";
+    escribirPantalla(menu);
+}
+
+void Device::mostrarOpcion(int cual) {
+    switch (cual) {
+        case 0: // Monitor
+        {
+            float temp = readTemp();
+            float hum = readHum();
+            String texto = "=== MONITOR ===\n\n";
+            texto += "Temp: " + String(temp, 1) + "C\n";
+            texto += "Humedad: " + String(hum, 1) + "%\n\n";
+            texto += "Ventilador: " + String(ventilacionEncendida ? "ON" : "OFF") + "\n";
+            texto += "Riego: " + String(riegoEncendido ? "ON" : "OFF") + "\n\n";
+            texto += "Giro antihorario: SALIR";
+            escribirPantalla(texto);
+            break;
+        }
+        case 1: // Temperatura
+            showScreenTemp();
+            break;
+        case 2: // Humedad  
+            showScreenHum();
+            break;
+    }
+}
