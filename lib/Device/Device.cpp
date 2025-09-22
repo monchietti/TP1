@@ -38,6 +38,7 @@ void Device::begin(int I2C_SDA, int I2C_SCL)
     //HARDCODEAR EN 100 para que titile siempre
     humedadMinimaDeseada = random(40, 61);
     Serial.println("Humedad minima deseada: " + String(humedadMinimaDeseada) + "%");
+    mostrarMenuPrincipal();
 }
 
 void Device::escribirPantalla(String texto){
