@@ -1,9 +1,11 @@
 #include "Device.h"
 
-// Inicializamos las variables con algo llamado lista de inicializacion, propio de C++
-// Se diferencia de la inicializacion normal en que en la normal se setean valores por defecto, cadenas en " ", numeros en 0, etc.
-// Cuando se definen con la lista es mas performante, ocupa menos espacio y no asigna valores por defecto, se crea con los valores que vos le pasas
-Device::Device(int w, int h, int reset,int pinDHT, const uint8_t model, int pinPOT, int pinBtn, int pinLED) : _sensor(pinDHT, model), _display(w, h, &Wire, reset)
+
+Device::Device(int w, int h, int reset,int pinDHT, const uint8_t model, int pinPOT, int pinBtn, int pinLED, int pinCLK, int pinDT) 
+: 
+_sensor(pinDHT, model), 
+_display(w, h, &Wire, reset), 
+encoder(pinDT, pinCLK, RotaryEncoder::LatchMode::FOUR3)
 {
     PIN_POT = pinPOT;
     ENC_SW = pinBtn;
@@ -62,20 +64,6 @@ float Device::mapPotToTempC(int raw)
 {
     return 0.0f + (45.0f - 0.0f) * (float)raw / 4095.0f;
 }
-void Device::handleEncoderButton()
-{
-    unsigned long now = millis();
-    if (now - lastBtnMs < DEBOUNCE_MS)
-        return;
-    if (digitalRead(ENC_SW) == LOW)
-    { // INPUT_PULLUP: presionado = LOW
-        lastBtnMs = now;
-        screenIdx = (screenIdx + 1) % 2;
-        Serial.println("[UI] Cambio a Pantalla" + String(screenIdx + 1));
-        pararLedIntermitente();
-        // refrescar inmediatamente y aplicar modo de LED de la pantalla
-    }
-}
 
 void Device::prenderLed()
 {
@@ -108,24 +96,32 @@ void Device::actualizarLedIntermitente(){
     }
 }
 
-void Device::showScreenTemp()
-{
-    // Leer sensor
-    int valor = readPot();
-    float tempC_pot = mapPotToTempC(valor);
-    float tempC = readTemp(); // en Celsius
-    String texto = "Pantalla Temperatura \n \n Temp: " + String(tempC, 2) + " C\n\n  Temp Ref: " + String(tempC_pot, 2) + " C";
 
-    if (tempC > tempC_pot)
+
+void Device::actualizarTemperatura(){
+    bool estadoAnterior = ventilacionEncendida;
+    float valor = readPot();
+    tempPot = mapPotToTempC(valor);
+    temp = readTemp(); 
+    ventilacionEncendida = (temp > tempPot);
+    
+    if (ventilacionEncendida && !estadoAnterior){
+        Serial.println("Ventilacion encendida");
+    } else if (!ventilacionEncendida && estadoAnterior){
+        Serial.println("Ventilacion apagada");
+    }
+
+}
+
+void Device::mostrarPantallaTemperatura(){
+    // Leer sensor
+    
+    String texto = "Pantalla Temperatura \n \n Temp: " + String(temp, 2) + " C\n\n  Temp Ref: " + String(tempPot, 2) + " C";
+
+    if (ventilacionEncendida)
     {
         prenderLed();
         escribirPantalla(texto + "\n Ventilacion ON");
-
-        if (!ventilacionEncendida)
-        {
-            ventilacionEncendida = true;
-            Serial.println("Ventilacion encendida");
-        }
     }
     else
     {
@@ -139,17 +135,27 @@ void Device::showScreenTemp()
     }
 }
 
-void Device::showScreenHum(){
-    float humedadActual = readHum();
-    String textoRiego = "Humedad min deseada:\n" + String(humedadMinimaDeseada, 0) + "%\n\n" + "Humedad actual:\n" + humedadActual + "%";
+void Device::actualizarHumedad(){
+    bool estadoAnterior = riegoEncendido;
+    humedad = readHum();
+    riegoEncendido = (humedad < humedadMinimaDeseada);
+    if (riegoEncendido && !estadoAnterior){
+        Serial.println("riego encendido");
+    } else if (!riegoEncendido && estadoAnterior){
+        Serial.println("riego apagado");
+    }
 
-    if (humedadActual < humedadMinimaDeseada){
+}
+
+void Device::mostrarPantallaHumedad(){
+    String textoRiego = "Humedad min deseada:\n" + String(humedadMinimaDeseada, 0) + "%\n\n" + "Humedad actual:\n" + humedad + "%";
+
+    if (riegoEncendido){
         if(!ledState){
             ledIntermitente(200);
         }
         textoRiego += "\n\n Riego Encendido";
         if (!riegoEncendido){
-            riegoEncendido = true;
             Serial.println("Riego encendido");
         }
     }
@@ -157,21 +163,83 @@ void Device::showScreenHum(){
         pararLedIntermitente();
         textoRiego += "\n\n Riego Apagado";
         if (riegoEncendido){
-            riegoEncendido = false;
             Serial.println("Riego apagado");
         }
     }
     escribirPantalla(textoRiego);
 }
 
+void Device::mostrarPantallaMonitor(){
+    String texto = "=== MONITOR ===\n\n";
+    texto += "Temp: " + String(temp, 1) + "C\n";
+    texto += "Humedad: " + String(humedad, 1) + "%\n\n";
+    texto += "Ventilador: " + String(ventilacionEncendida ? "ON" : "OFF") + "\n";
+    texto += "Riego: " + String(riegoEncendido ? "ON" : "OFF") + "\n\n";
+    texto += "Giro antihorario: SALIR";
+
+    escribirPantalla(texto);
+}
+
+
+// ========== FUNCIONES DEL ENCODER ==========
+//valida si hubo o no rotacion y en que direccion
+void Device::checkRotaryEncoder() {
+    encoder.tick();
+    
+    int posicionActual = encoder.getPosition();
+    
+    if (posicionActual != posicionAnterior) {
+        RotaryEncoder::Direction direction = encoder.getDirection();
+        
+        if (direction == RotaryEncoder::Direction::CLOCKWISE) {
+            handleRotation("horario");
+            Serial.println("Encoder: Giro horario");
+        } 
+        else if (direction == RotaryEncoder::Direction::COUNTERCLOCKWISE) {
+            handleRotation("antihorario");
+            Serial.println("Encoder: Giro antihorario");
+        }
+        
+        posicionAnterior = posicionActual;
+    }
+}
+
+void Device::handleRotation(String sentido) {
+    
+    if (!dentroDeOpcion) {
+        // En el menú: solo giro horario entra en opción
+        if (sentido == "horario") {
+            // Giro horario: ENTRAR en la opción seleccionada
+            dentroDeOpcion = true;
+            mostrarOpcion(opcionActual);
+            Serial.println("ENTRANDO en opcion: " + String(opcionActual));
+        }
+        // Giro antihorario en menú: no hace nada
+        
+    } else {
+        // Dentro de opción: solo antihorario sale
+        if (sentido == "antihorario") {
+            // Giro antihorario: SALIR al menú
+            dentroDeOpcion = false;
+            pararLedIntermitente();
+            mostrarMenuPrincipal();
+            Serial.println("VOLVIENDO al menu");
+        }
+        // Giro horario dentro de opción: no hace nada
+    }
+}
 
 // ========== FUNCIONES DEL MENÚ ==========
 
 void Device::actualizarMenu() {
     // Esta función va en el loop() principal
-    leerEncoder();
+    checkRotaryEncoder();
     leerBoton();
     actualizarLedIntermitente();
+
+    actualizarTemperatura();
+    actualizarHumedad();
+    
     
     // Actualizar pantalla si estamos dentro de una opción
     if (dentroDeOpcion) {
@@ -236,7 +304,7 @@ void Device::leerBoton() {
 }
 
 void Device::mostrarMenuPrincipal() {
-    String menu = "=== MENU PRINCIPAL ===\n\n";
+    String menu = " == MENU PRINCIPAL ==\n\n";
     
     String opciones[] = {"Monitor", "Temperatura", "Humedad"};
     
@@ -256,22 +324,14 @@ void Device::mostrarOpcion(int cual) {
     switch (cual) {
         case 0: // Monitor
         {
-            float temp = readTemp();
-            float hum = readHum();
-            String texto = "=== MONITOR ===\n\n";
-            texto += "Temp: " + String(temp, 1) + "C\n";
-            texto += "Humedad: " + String(hum, 1) + "%\n\n";
-            texto += "Ventilador: " + String(ventilacionEncendida ? "ON" : "OFF") + "\n";
-            texto += "Riego: " + String(riegoEncendido ? "ON" : "OFF") + "\n\n";
-            texto += "Giro antihorario: SALIR";
-            escribirPantalla(texto);
+            mostrarPantallaMonitor();
             break;
         }
         case 1: // Temperatura
-            showScreenTemp();
+            mostrarPantallaTemperatura();
             break;
         case 2: // Humedad  
-            showScreenHum();
+            mostrarPantallaHumedad();
             break;
     }
 }

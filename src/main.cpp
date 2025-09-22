@@ -9,9 +9,10 @@
 #define PIN_POT 32
 #define PIN_LED 23
 #define ENC_SW 19 
-
+#define PIN_CLK 18
+#define PIN_DT 5
 // ---- Objetos ----
-Device device(127, 64, -1, PIN_DHT, DHT22, PIN_POT, ENC_SW, PIN_LED);
+Device device(127, 64, -1, PIN_DHT, DHT22, PIN_POT, ENC_SW, PIN_LED, PIN_CLK, PIN_DT);
 
 
 
@@ -24,5 +25,4 @@ void setup() {
 
 void loop() {
   device.actualizarMenu();
-  delay(10);
 }
