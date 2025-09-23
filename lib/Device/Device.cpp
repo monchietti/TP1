@@ -33,11 +33,15 @@ void Device::begin(int I2C_SDA, int I2C_SCL)
     // inicializacion pines
     pinMode(PIN_LED, OUTPUT);
     pinMode(ENC_SW, INPUT_PULLUP); // botón del encoder
+
     randomSeed(millis());
     // Generar umbral inicial entre 40 y 60
     //HARDCODEAR EN 100 para que titile siempre
     humedadMinimaDeseada = random(40, 61);
     Serial.println("Humedad minima deseada: " + String(humedadMinimaDeseada) + "%");
+    escribirPantalla("Hum minima deseada:\n" + String(humedadMinimaDeseada, 0) + "%");
+    delay(2000);
+
     mostrarMenuPrincipal();
 }
 
@@ -124,15 +128,9 @@ void Device::mostrarPantallaTemperatura(){
         prenderLed();
         escribirPantalla(texto + "\n Ventilacion ON");
     }
-    else
-    {
+    else{
         apagarLed();
         escribirPantalla(texto + "\n Ventilacion OFF");
-        if (ventilacionEncendida)
-        {
-            ventilacionEncendida = false;
-            Serial.println("Ventilacion apagada");
-        }
     }
 }
 
@@ -184,7 +182,7 @@ void Device::mostrarPantallaMonitor(){
 
 // ========== FUNCIONES DEL ENCODER ==========
 //valida si hubo o no rotacion y en que direccion
-void Device::checkRotaryEncoder() {
+void Device::chequearEncoder() {
     encoder.tick();
     
     int posicionActual = encoder.getPosition();
@@ -193,11 +191,11 @@ void Device::checkRotaryEncoder() {
         RotaryEncoder::Direction direction = encoder.getDirection();
         
         if (direction == RotaryEncoder::Direction::CLOCKWISE) {
-            handleRotation("horario");
+            manejarRotacion("horario");
             Serial.println("Encoder: Giro horario");
         } 
         else if (direction == RotaryEncoder::Direction::COUNTERCLOCKWISE) {
-            handleRotation("antihorario");
+            manejarRotacion("antihorario");
             Serial.println("Encoder: Giro antihorario");
         }
         
@@ -205,7 +203,7 @@ void Device::checkRotaryEncoder() {
     }
 }
 
-void Device::handleRotation(String sentido) {
+void Device::manejarRotacion(String sentido) {
     
     if (!dentroDeOpcion) {
         // En el menú: solo giro horario entra en opción
@@ -234,7 +232,7 @@ void Device::handleRotation(String sentido) {
 
 void Device::actualizarMenu() {
     // Esta función va en el loop() principal
-    checkRotaryEncoder();
+    chequearEncoder();
     leerBoton();
     actualizarLedIntermitente();
 
@@ -245,7 +243,7 @@ void Device::actualizarMenu() {
     // Actualizar pantalla si estamos dentro de una opción
     if (dentroDeOpcion) {
         static unsigned long ultimaActualizacion = 0;
-        if (millis() - ultimaActualizacion > 1000) { // Cada segundo
+        if (millis() - ultimaActualizacion > 300) { 
             mostrarOpcion(opcionActual);
             ultimaActualizacion = millis();
         }

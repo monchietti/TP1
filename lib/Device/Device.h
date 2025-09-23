@@ -26,8 +26,8 @@ class Device{
         
         //funciones del encoder
         void tick();
-        void checkRotaryEncoder();
-        void handleRotation(String sentido);
+        void chequearEncoder();
+        void manejarRotacion(String sentido);
 
         //funciones del menu
         void mostrarPantallaTemperatura();

@@ -17,7 +17,7 @@ Device device(127, 64, -1, PIN_DHT, DHT22, PIN_POT, ENC_SW, PIN_LED, PIN_CLK, PI
 
 
 void setup() {
-
+  
   Serial.begin(115200);
   delay(100);
   device.begin(I2C_SDA, I2C_SCL);
