@@ -9,25 +9,20 @@
 #define PIN_POT 32
 #define PIN_LED 23
 #define ENC_SW 19 
-
+#define PIN_CLK 18
+#define PIN_DT 5
 // ---- Objetos ----
-Device device(127, 64, -1, PIN_DHT, DHT22, PIN_POT, ENC_SW, PIN_LED);
+Device device(127, 64, -1, PIN_DHT, DHT22, PIN_POT, ENC_SW, PIN_LED, PIN_CLK, PIN_DT);
 
 
 
 void setup() {
-
+  
   Serial.begin(115200);
   delay(100);
   device.begin(I2C_SDA, I2C_SCL);
 }
 
 void loop() {
-  device.handleEncoderButton();
-  if(device.screenIdx == 0){
-    device.showScreenTemp();
-  } else {
-    device.showScreenHum();
-    device.actualizarLedIntermitente();
-  }
+  device.actualizarMenu();
 }
